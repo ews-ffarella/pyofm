@@ -363,6 +363,124 @@ void OFMesh::getCellFacesCsrStd(std::vector<int>& offsets, std::vector<int>& fac
     }
 }
 
+// ------------------------------------------------------------------
+// Bulk geometry exports (py-ofmesh parity diagnostics)
+// ------------------------------------------------------------------
+void OFMesh::getFaceAreaVectorsStd(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getFaceAreaVectorsStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const vectorField& Sf = mesh.Sf(); // primitiveMeshGeometry.C
+    const label nF = Sf.size();
+    data.resize(static_cast<std::size_t>(3 * nF));
+    for (label f = 0; f < nF; ++f)
+    {
+        const vector& v = Sf[f];
+        data[3 * f + 0] = v.x();
+        data[3 * f + 1] = v.y();
+        data[3 * f + 2] = v.z();
+    }
+}
+
+void OFMesh::getFaceCentresStd(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getFaceCentresStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const vectorField& Cf = mesh.Cf(); // primitiveMeshGeometry.C
+    const label nF = Cf.size();
+    data.resize(static_cast<std::size_t>(3 * nF));
+    for (label f = 0; f < nF; ++f)
+    {
+        const vector& v = Cf[f];
+        data[3 * f + 0] = v.x();
+        data[3 * f + 1] = v.y();
+        data[3 * f + 2] = v.z();
+    }
+}
+
+void OFMesh::getCellCentresStd(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getCellCentresStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const vectorField& Cc = mesh.C(); // primitiveMeshGeometry.C
+    const label nC = Cc.size();
+    data.resize(static_cast<std::size_t>(3 * nC));
+    for (label c = 0; c < nC; ++c)
+    {
+        const vector& v = Cc[c];
+        data[3 * c + 0] = v.x();
+        data[3 * c + 1] = v.y();
+        data[3 * c + 2] = v.z();
+    }
+}
+
+void OFMesh::getCellVolumesStd(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getCellVolumesStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const scalarField& vols = mesh.V(); // primitiveMeshGeometry.C
+    const label nC = vols.size();
+    data.resize(static_cast<std::size_t>(nC));
+    for (label c = 0; c < nC; ++c)
+    {
+        data[c] = vols[c];
+    }
+}
+
+void OFMesh::getOwnerPyr3Std(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getOwnerPyr3Std") << "Mesh not loaded" << abort(FatalError);
+    }
+    // pyr3 = Sf · (Cf - C_owner) (signed 3 * pyramid volume from owner side)
+    const fvMesh& mesh = meshPtr_();
+    const vectorField& Sf = mesh.Sf();
+    const vectorField& Cf = mesh.Cf();
+    const vectorField& Cc = mesh.C();
+    const labelUList& own = mesh.owner();
+    const label nF = Sf.size();
+    data.resize(static_cast<std::size_t>(nF));
+    for (label f = 0; f < nF; ++f)
+    {
+        const vector d = Cf[f] - Cc[own[f]];
+        data[f] = Sf[f] & d; // primitiveMeshTools::facePyramidVolume internal form
+    }
+}
+
+void OFMesh::getNeighbourPyr3Std(std::vector<double>& data) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getNeighbourPyr3Std") << "Mesh not loaded" << abort(FatalError);
+    }
+    // pyr3 (neighbour) = -Sf · (Cf - C_nei)
+    const fvMesh& mesh = meshPtr_();
+    const vectorField& Sf = mesh.Sf();
+    const vectorField& Cf = mesh.Cf();
+    const vectorField& Cc = mesh.C();
+    const labelUList& nei = mesh.neighbour();
+    const label nIF = mesh.nInternalFaces();
+    data.resize(static_cast<std::size_t>(nIF));
+    for (label f = 0; f < nIF; ++f)
+    {
+        const vector d = Cf[f] - Cc[nei[f]];
+        data[f] = -(Sf[f] & d); // sign per neighbour definition
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

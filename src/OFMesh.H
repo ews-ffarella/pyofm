@@ -410,6 +410,22 @@ public:
     void getCellFacesCsrStd(
         std::vector<int>& offsets,
         std::vector<int>& faces) const; // offsets size = nCells+1
+
+    // ------------------------------------------------------------------
+    // Bulk geometry exports (added for py-ofmesh parity diagnostics)
+    // These provide flat arrays for direct NumPy ingestion without
+    // per-entity Python loops. All data are sourced directly from
+    // OpenFOAM cached geometric primitives ensuring algorithmic parity.
+    // References (OpenFOAM sources):
+    //   primitiveMeshGeometry.C : makeFaceCentresAndAreas, makeCellCentresAndVols
+    //   primitiveMeshTools.C    : facePyramidVolume
+    // ------------------------------------------------------------------
+    void getFaceAreaVectorsStd(std::vector<double>& data) const; // size = 3*nFaces (x,y,z)
+    void getFaceCentresStd(std::vector<double>& data) const; // size = 3*nFaces
+    void getCellCentresStd(std::vector<double>& data) const; // size = 3*nCells
+    void getCellVolumesStd(std::vector<double>& data) const; // size = nCells
+    void getOwnerPyr3Std(std::vector<double>& data) const; // size = nFaces, pyr3 = Sf·(Cf-Cc)
+    void getNeighbourPyr3Std(std::vector<double>& data) const; // size = nInternalFaces, pyr3 = -Sf·(Cf-Cn)
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

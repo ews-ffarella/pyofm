@@ -59,6 +59,12 @@ cdef extern from "OFMesh.H" namespace "Foam":
         void getNeighboursStd(vector[int]&)
         void getFacePointsCsrStd(vector[int]&, vector[int]&)
         void getCellFacesCsrStd(vector[int]&, vector[int]&)
+        void getFaceAreaVectorsStd(vector[double]&)
+        void getFaceCentresStd(vector[double]&)
+        void getCellCentresStd(vector[double]&)
+        void getCellVolumesStd(vector[double]&)
+        void getOwnerPyr3Std(vector[double]&)
+        void getNeighbourPyr3Std(vector[double]&)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -333,3 +339,60 @@ cdef class pyOFMesh:
         for i in range(len(fcs)):
             fArr[i] = fcs[i]
         return offArr, fArr
+
+    # ------------------------------------------------------------------
+    # Bulk geometry arrays
+    # ------------------------------------------------------------------
+    def getFaceAreaVectors(self):
+        cdef vector[double] dat
+        self._thisptr.getFaceAreaVectorsStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getFaceCentres(self):
+        cdef vector[double] dat
+        self._thisptr.getFaceCentresStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getCellCentres(self):
+        cdef vector[double] dat
+        self._thisptr.getCellCentresStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getCellVolumes(self):
+        cdef vector[double] dat
+        self._thisptr.getCellVolumesStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
+
+    def getOwnerPyr3(self):
+        cdef vector[double] dat
+        self._thisptr.getOwnerPyr3Std(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
+
+    def getNeighbourPyr3(self):
+        cdef vector[double] dat
+        self._thisptr.getNeighbourPyr3Std(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
