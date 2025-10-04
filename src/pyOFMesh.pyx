@@ -14,9 +14,9 @@
 
 '''
 
-cimport numpy as np
-
+from libcpp.vector cimport vector
 from libcpp.string cimport string
+cimport numpy as np
 
 # declear cpp functions
 cdef extern from "OFMesh.H" namespace "Foam":
@@ -48,6 +48,7 @@ cdef extern from "OFMesh.H" namespace "Foam":
         double getFaceAreaMag(int)
         double getCellCentre(int,int)
         double getCellVolume(int)
+        void getFacePyramidVolumesStd(vector[double]& , vector[double]&)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -182,3 +183,17 @@ cdef class pyOFMesh:
 
     def getCellVolume(self, cellI):
         return self._thisptr.getCellVolume(cellI)
+
+    def getFacePyramidVolumes(self):
+        cdef vector[double] own
+        cdef vector[double] nei
+        self._thisptr.getFacePyramidVolumesStd(own, nei)
+        # Convert C++ vectors to numpy arrays (copies)
+        import numpy as np
+        a = np.empty(len(own), dtype=float)
+        for i in range(len(own)):
+            a[i] = own[i]
+        b = np.empty(len(nei), dtype=float)
+        for i in range(len(nei)):
+            b[i] = nei[i]
+        return a, b

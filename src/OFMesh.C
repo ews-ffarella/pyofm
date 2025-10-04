@@ -5,6 +5,7 @@
 
 \*---------------------------------------------------------------------------*/
 #include "OFMesh.H"
+#include "primitiveMeshTools.H" // For primitiveMeshTools::facePyramidVolume
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -77,6 +78,38 @@ void OFMesh::readMesh()
     }
 
     return;
+}
+
+void OFMesh::getFacePyramidVolumes(scalarField& ownPyr, scalarField& neiPyr) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getFacePyramidVolumes") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    Foam::primitiveMeshTools::facePyramidVolume(
+        mesh,
+        mesh.points(),
+        mesh.cellCentres(),
+        ownPyr,
+        neiPyr);
+}
+
+void OFMesh::getFacePyramidVolumesStd(std::vector<double>& ownPyr, std::vector<double>& neiPyr) const
+{
+    scalarField own;
+    scalarField nei;
+    getFacePyramidVolumes(own, nei);
+    ownPyr.resize(own.size());
+    for (size_t i = 0; i < own.size(); ++i)
+    {
+        ownPyr[i] = own[i];
+    }
+    neiPyr.resize(nei.size());
+    for (size_t i = 0; i < nei.size(); ++i)
+    {
+        neiPyr[i] = nei[i];
+    }
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -12,6 +12,7 @@
 #define OFMesh_H
 
 #include "fvCFD.H"
+#include <vector>
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -343,6 +344,18 @@ public:
         // mesh.V(): cell volumes (scalarField)
         return meshPtr_().V()[cellI];
     }
+
+    // ------------------------------------------------------------------
+    // Diagnostic: expose face pyramid volumes (primitiveMeshTools::facePyramidVolume)
+    // Returns owner pyramid volumes (size nFaces) and neighbour pyramid volumes
+    // (size nInternalFaces). Matches OpenFOAM sign convention in that both arrays
+    // store positive magnitudes: primitiveMeshTools negates owner internally when
+    // forming the scalarField for checks, but the underlying mag() call produces
+    // positive volume. We reproduce the direct output of facePyramidVolume here.
+    // ------------------------------------------------------------------
+    void getFacePyramidVolumes(scalarField& ownPyr, scalarField& neiPyr) const;
+    // Convenience helper returning std::vector for Cython (avoids exposing Foam::scalarField in Cython layer)
+    void getFacePyramidVolumesStd(std::vector<double>& ownPyr, std::vector<double>& neiPyr) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
