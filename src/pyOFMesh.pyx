@@ -49,6 +49,12 @@ cdef extern from "OFMesh.H" namespace "Foam":
         double getCellCentre(int,int)
         double getCellVolume(int)
         void getFacePyramidVolumesStd(vector[double]& , vector[double]&)
+        void getCellDeterminantStd(vector[double]&)
+        bint getMinPyrVolumeStd(vector[double]&)
+        bint getMinTetVolumeStd(vector[double]&)
+        int getWrongOrientedFacesStd(vector[int]&)
+        void getCellInvertedMaskStd(vector[int]&)
+        void dumpDiagnostics(vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[int]&, vector[int]&)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -197,3 +203,82 @@ cdef class pyOFMesh:
         for i in range(len(nei)):
             b[i] = nei[i]
         return a, b
+
+    def getCellDeterminant(self):
+        cdef vector[double] det
+        self._thisptr.getCellDeterminantStd(det)
+        import numpy as np
+        arr = np.empty(len(det), dtype=float)
+        for i in range(len(det)):
+            arr[i] = det[i]
+        return arr
+
+    def getMinPyrVolume(self):
+        cdef vector[double] v
+        ok = self._thisptr.getMinPyrVolumeStd(v)
+        if not ok:
+            return None
+        import numpy as np
+        arr = np.empty(len(v), dtype=float)
+        for i in range(len(v)):
+            arr[i] = v[i]
+        return arr
+
+    def getMinTetVolume(self):
+        cdef vector[double] v
+        ok = self._thisptr.getMinTetVolumeStd(v)
+        if not ok:
+            return None
+        import numpy as np
+        arr = np.empty(len(v), dtype=float)
+        for i in range(len(v)):
+            arr[i] = v[i]
+        return arr
+
+    def getWrongOrientedFaces(self):
+        cdef vector[int] f
+        count = self._thisptr.getWrongOrientedFacesStd(f)
+        import numpy as np
+        arr = np.empty(len(f), dtype=np.int32)
+        for i in range(len(f)):
+            arr[i] = f[i]
+        return arr
+
+    def getCellInvertedMask(self):
+        cdef vector[int] m
+        self._thisptr.getCellInvertedMaskStd(m)
+        import numpy as np
+        arr = np.empty(len(m), dtype=np.int32)
+        for i in range(len(m)):
+            arr[i] = m[i]
+        return arr
+
+    def dumpDiagnostics(self):
+        cdef vector[double] own
+        cdef vector[double] nei
+        cdef vector[double] minP
+        cdef vector[double] minT
+        cdef vector[double] det
+        cdef vector[int] wrong
+        cdef vector[int] inv
+        self._thisptr.dumpDiagnostics(own, nei, minP, minT, det, wrong, inv)
+        import numpy as np
+        def to_np_d(v):
+            a = np.empty(len(v), dtype=float)
+            for i in range(len(v)):
+                a[i] = v[i]
+            return a
+        def to_np_i(v):
+            a = np.empty(len(v), dtype=np.int32)
+            for i in range(len(v)):
+                a[i] = v[i]
+            return a
+        return {
+            'face_owner_pyr3': to_np_d(own),
+            'face_nei_pyr3': to_np_d(nei),
+            'cell_minPyrVolume': None if len(minP)==0 else to_np_d(minP),
+            'cell_minTetVolume': None if len(minT)==0 else to_np_d(minT),
+            'cell_determinant': to_np_d(det),
+            'wrong_oriented_faces': to_np_i(wrong),
+            'cell_inverted_mask': to_np_i(inv),
+        }

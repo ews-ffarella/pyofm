@@ -356,6 +356,41 @@ public:
     void getFacePyramidVolumes(scalarField& ownPyr, scalarField& neiPyr) const;
     // Convenience helper returning std::vector for Cython (avoids exposing Foam::scalarField in Cython layer)
     void getFacePyramidVolumesStd(std::vector<double>& ownPyr, std::vector<double>& neiPyr) const;
+
+    // ------------------------------------------------------------------
+    // Additional checkMesh primitive accessors (augmentation for py-ofmesh parity work)
+    // ------------------------------------------------------------------
+    // Expose face centres array pointer (component-wise) not needed; keep scalar access pattern.
+
+    // Cell determinant (primitiveMeshTools::cellDeterminant) - compute on demand.
+    // We return a std::vector<double> for Python consumption.
+    void getCellDeterminantStd(std::vector<double>& det) const;
+
+    // Min pyramid volume written by checkMesh (already available on disk as volScalarField
+    // when -writeAllFields used). Provided here for direct in-memory capture to remove file IO.
+    bool getMinPyrVolumeStd(std::vector<double>& minPyr) const;
+
+    // Min tet volume (if written). Returns false if field absent.
+    bool getMinTetVolumeStd(std::vector<double>& minTet) const;
+
+    // Wrong oriented faces: replicate logic in primitiveMeshGeometry::checkFacePyramids
+    // We collect indices of faces with wrong orientation into vector. Returns count.
+    int getWrongOrientedFacesStd(std::vector<int>& faceIds) const;
+
+    // Cell negative / inverted flag: detect any cell with negative volume or negative tet volume
+    // (simple heuristic) and return mask (0/1).
+    void getCellInvertedMaskStd(std::vector<int>& inverted) const;
+
+    // Bulk dump convenience: gather a suite of diagnostics in one call. Any optional field
+    // not found is returned empty.
+    void dumpDiagnostics(
+        std::vector<double>& ownPyr3,
+        std::vector<double>& neiPyr3,
+        std::vector<double>& minPyr,
+        std::vector<double>& minTet,
+        std::vector<double>& cellDet,
+        std::vector<int>& wrongFaces,
+        std::vector<int>& invertedMask) const;
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
