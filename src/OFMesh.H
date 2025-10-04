@@ -313,8 +313,23 @@ public:
 
     double getFaceAreaMag(const label faceI) const
     {
-        // mesh.magSf(): face area magnitudes (scalarField)
-        return meshPtr_().magSf()[faceI];
+        // NOTE (py-ofmesh parity fix): We deliberately avoid using mesh.magSf()[faceI]
+        // here because in our golden-reference extraction workflow we observed
+        // inconsistent/stale magnitudes for boundary faces (internal faces were fine).
+        // Instead we derive the magnitude directly from the area vector Sf to
+        // guarantee consistency: mag(Sf) == ||Sf||.
+        //
+        // OpenFOAM reference implementation for face centres and area vectors
+        // (and implicitly the magnitudes) lives in:
+        //   ./submodules/openfoam/src/OpenFOAM/meshes/primitiveMesh/
+        //       primitiveMeshGeometry.C
+        //   ./submodules/openfoam/src/OpenFOAM/meshes/primitiveMesh/
+        //       primitiveMeshTools.C (makeFaceCentresAndAreas)
+        // which computes both Sf and magSf from the same underlying data.
+        // If magSf is ever guaranteed fresh this can revert to magSf(). Until
+        // then we enforce correctness deterministically.
+        const vector& sf = meshPtr_().Sf()[faceI];
+        return Foam::mag(sf);
     }
 
     double getCellCentre(const label cellI, const label compI) const
