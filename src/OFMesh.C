@@ -279,6 +279,90 @@ void OFMesh::dumpDiagnostics(
     getCellInvertedMaskStd(invertedMask);
 }
 
+void OFMesh::getOwnersStd(std::vector<int>& owners) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getOwnersStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const labelUList& own = mesh.owner();
+    owners.resize(own.size());
+    forAll(own, i) owners[i] = own[i];
+}
+
+void OFMesh::getNeighboursStd(std::vector<int>& neighbours) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getNeighboursStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const labelUList& nei = mesh.neighbour();
+    neighbours.resize(nei.size());
+    forAll(nei, i) neighbours[i] = nei[i];
+}
+
+void OFMesh::getFacePointsCsrStd(std::vector<int>& offsets, std::vector<int>& points) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getFacePointsCsrStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const faceList& fcs = mesh.faces();
+    const label nF = fcs.size();
+    offsets.resize(nF + 1);
+    // First pass: prefix sums
+    std::size_t running = 0;
+    for (label f = 0; f < nF; ++f)
+    {
+        offsets[f] = static_cast<int>(running);
+        running += fcs[f].size();
+    }
+    offsets[nF] = static_cast<int>(running);
+    points.resize(running);
+    // Second pass: copy point indices preserving original order
+    for (label f = 0; f < nF; ++f)
+    {
+        const face& fc = fcs[f];
+        const int base = offsets[f];
+        forAll(fc, i)
+        {
+            points[base + i] = fc[i];
+        }
+    }
+}
+
+void OFMesh::getCellFacesCsrStd(std::vector<int>& offsets, std::vector<int>& faces) const
+{
+    if (!meshPtr_.valid())
+    {
+        FatalErrorIn("OFMesh::getCellFacesCsrStd") << "Mesh not loaded" << abort(FatalError);
+    }
+    const fvMesh& mesh = meshPtr_();
+    const cellList& cls = mesh.cells();
+    const label nC = cls.size();
+    offsets.resize(nC + 1);
+    std::size_t running = 0;
+    for (label c = 0; c < nC; ++c)
+    {
+        offsets[c] = static_cast<int>(running);
+        running += cls[c].size();
+    }
+    offsets[nC] = static_cast<int>(running);
+    faces.resize(running);
+    for (label c = 0; c < nC; ++c)
+    {
+        const cell& cf = cls[c];
+        const int base = offsets[c];
+        forAll(cf, i)
+        {
+            faces[base + i] = cf[i];
+        }
+    }
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 } // End namespace Foam

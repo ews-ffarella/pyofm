@@ -391,6 +391,25 @@ public:
         std::vector<double>& cellDet,
         std::vector<int>& wrongFaces,
         std::vector<int>& invertedMask) const;
+
+    // ------------------------------------------------------------------
+    // Bulk connectivity export (added for py-ofmesh debugging & gold gen)
+    // These provide zero-branch copies of OpenFOAM topology into flat CSR
+    // arrays to avoid Python per-entity loops. Parity requirement: values
+    // correspond exactly to mesh.owner(), mesh.neighbour(), mesh.faces(),
+    // and mesh.cells() ordering used internally by OpenFOAM.
+    // References (OpenFOAM sources):
+    //   ./src/OpenFOAM/meshes/primitiveMesh/primitiveMesh.H (owner(), neighbour(), faces(), cells())
+    //   ./src/OpenFOAM/meshes/primitiveMesh/primitiveMeshTopoChange (ordering semantics)
+    // ------------------------------------------------------------------
+    void getOwnersStd(std::vector<int>& owners) const; // size = nFaces
+    void getNeighboursStd(std::vector<int>& neighbours) const; // size = nInternalFaces
+    void getFacePointsCsrStd(
+        std::vector<int>& offsets,
+        std::vector<int>& points) const; // offsets size = nFaces+1
+    void getCellFacesCsrStd(
+        std::vector<int>& offsets,
+        std::vector<int>& faces) const; // offsets size = nCells+1
 };
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

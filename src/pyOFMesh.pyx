@@ -55,6 +55,10 @@ cdef extern from "OFMesh.H" namespace "Foam":
         int getWrongOrientedFacesStd(vector[int]&)
         void getCellInvertedMaskStd(vector[int]&)
         void dumpDiagnostics(vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[int]&, vector[int]&)
+        void getOwnersStd(vector[int]&)
+        void getNeighboursStd(vector[int]&)
+        void getFacePointsCsrStd(vector[int]&, vector[int]&)
+        void getCellFacesCsrStd(vector[int]&, vector[int]&)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -282,3 +286,50 @@ cdef class pyOFMesh:
             'wrong_oriented_faces': to_np_i(wrong),
             'cell_inverted_mask': to_np_i(inv),
         }
+
+    # ------------------------------------------------------------------
+    # Bulk connectivity exports (return NumPy arrays)
+    # ------------------------------------------------------------------
+    def getOwners(self):
+        cdef vector[int] vec
+        self._thisptr.getOwnersStd(vec)
+        import numpy as np
+        arr = np.empty(len(vec), dtype=np.int32)
+        for i in range(len(vec)):
+            arr[i] = vec[i]
+        return arr
+
+    def getNeighbours(self):
+        cdef vector[int] vec
+        self._thisptr.getNeighboursStd(vec)
+        import numpy as np
+        arr = np.empty(len(vec), dtype=np.int32)
+        for i in range(len(vec)):
+            arr[i] = vec[i]
+        return arr
+
+    def getFacePointsCSR(self):
+        cdef vector[int] offs
+        cdef vector[int] pts
+        self._thisptr.getFacePointsCsrStd(offs, pts)
+        import numpy as np
+        offArr = np.empty(len(offs), dtype=np.int32)
+        for i in range(len(offs)):
+            offArr[i] = offs[i]
+        ptsArr = np.empty(len(pts), dtype=np.int32)
+        for i in range(len(pts)):
+            ptsArr[i] = pts[i]
+        return offArr, ptsArr
+
+    def getCellFacesCSR(self):
+        cdef vector[int] offs
+        cdef vector[int] fcs
+        self._thisptr.getCellFacesCsrStd(offs, fcs)
+        import numpy as np
+        offArr = np.empty(len(offs), dtype=np.int32)
+        for i in range(len(offs)):
+            offArr[i] = offs[i]
+        fArr = np.empty(len(fcs), dtype=np.int32)
+        for i in range(len(fcs)):
+            fArr[i] = fcs[i]
+        return offArr, fArr
