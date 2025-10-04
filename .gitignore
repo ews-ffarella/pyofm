@@ -7,4 +7,4 @@ pyofm.egg-info
 __pycache__
 *.so
 pyOFMesh.cpp
-./reg_tests/input.tar.gz
+**/*.tar.gz
