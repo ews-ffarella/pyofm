@@ -43,6 +43,11 @@ cdef extern from "OFMesh.H" namespace "Foam":
         int getLocalFaceNeighbour(int)
         void readField(char* , char *, char *, double *)
         void writeField(char* , char *, double *)
+        double getFaceCentre(int,int)
+        double getFaceAreaVector(int,int)
+        double getFaceAreaMag(int)
+        double getCellCentre(int,int)
+        double getCellVolume(int)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -159,3 +164,21 @@ cdef class pyOFMesh:
         
         cdef double *field_data = <double*>field.data
         self._thisptr.writeField(fieldName.encode(), fieldType.encode(), field_data)
+
+    # ------------------------------------------------------------------
+    # Geometry accessors (added for golden reference extraction)
+    # ------------------------------------------------------------------
+    def getFaceCentre(self, faceI, compI):
+        return self._thisptr.getFaceCentre(faceI, compI)
+
+    def getFaceAreaVector(self, faceI, compI):
+        return self._thisptr.getFaceAreaVector(faceI, compI)
+
+    def getFaceAreaMag(self, faceI):
+        return self._thisptr.getFaceAreaMag(faceI)
+
+    def getCellCentre(self, cellI, compI):
+        return self._thisptr.getCellCentre(cellI, compI)
+
+    def getCellVolume(self, cellI):
+        return self._thisptr.getCellVolume(cellI)

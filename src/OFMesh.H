@@ -217,9 +217,9 @@ public:
                 for (label i = 0; i < 3; i++)
                 {
 #if defined(CODI_ADR) || defined(CODI_ADF)
-                field[counterI] = state[cellI][i].getValue();
+                    field[counterI] = state[cellI][i].getValue();
 #else
-                field[counterI] = state[cellI][i];
+                    field[counterI] = state[cellI][i];
 #endif
                     counterI++;
                 }
@@ -289,6 +289,44 @@ public:
             FatalErrorIn("readField") << "fieldType " << fieldType
                                       << " not supported! Options are volScalariField or volVectorField" << abort(FatalError);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Added geometry accessor methods to expose OpenFOAM cached geometric
+    // primitives for golden reference generation in py-ofmesh project.
+    // These simply forward to fvMesh on-demand computed fields. Any
+    // deviation from OpenFOAM algorithms would happen there; here we only
+    // expose read-only scalars.
+    // ------------------------------------------------------------------
+
+    double getFaceCentre(const label faceI, const label compI) const
+    {
+        // mesh.Cf(): face centres (vectorField)
+        return meshPtr_().Cf()[faceI][compI];
+    }
+
+    double getFaceAreaVector(const label faceI, const label compI) const
+    {
+        // mesh.Sf(): face area vectors (vectorField)
+        return meshPtr_().Sf()[faceI][compI];
+    }
+
+    double getFaceAreaMag(const label faceI) const
+    {
+        // mesh.magSf(): face area magnitudes (scalarField)
+        return meshPtr_().magSf()[faceI];
+    }
+
+    double getCellCentre(const label cellI, const label compI) const
+    {
+        // mesh.C(): cell centres (vectorField)
+        return meshPtr_().C()[cellI][compI];
+    }
+
+    double getCellVolume(const label cellI) const
+    {
+        // mesh.V(): cell volumes (scalarField)
+        return meshPtr_().V()[cellI];
     }
 };
 
