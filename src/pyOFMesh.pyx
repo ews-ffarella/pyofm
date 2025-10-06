@@ -1,4 +1,3 @@
-
 # distutils: language = c++
 # distutils: sources = OFMesh.C
 
@@ -396,3 +395,68 @@ cdef class pyOFMesh:
         for i in range(len(dat)):
             arr[i] = dat[i]
         return arr
+
+    # ------------------------------------------------------------------
+    # Bulk snapshot (geometry + pyramid volumes)
+    # ------------------------------------------------------------------
+    def getGeometrySnapshot(self):
+        """Return a consistent snapshot of core geometric arrays and face pyramid volumes.
+
+        This aggregates several separate C++ std::vector export routines into one
+        Python call to reduce overhead and ensure we obtain a self‑consistent
+        (same-timestep) view of the mesh geometry for parity/gold generation.
+
+        Returned dictionary keys:
+          - face_area_vectors: (nFaces,3) area vectors (OpenFOAM: primitiveMeshGeometry.C)
+          - face_centres:      (nFaces,3) face centres     (primitiveMeshGeometry.C)
+          - cell_centres:      (nCells,3) cell centres     (polyMeshGeometry.C)
+          - cell_volumes:      (nCells,)  cell volumes     (polyMeshGeometry.C)
+          - owner_pyr3:        (nInternalFaces,) signed owner pyramid volumes
+          - neighbour_pyr3:    (nInternalFaces,) signed neighbour pyramid volumes
+
+        Pyramid volumes correspond to the face-based signed pyramid volumes used by
+        OpenFOAM checkMesh (see primitiveMeshTools.C::facePyramidVolume and
+        primitiveMeshGeometry.C::checkFacePyramids). We expose them directly so that
+        higher-level parity tests in py-ofmesh can reimplement the exact logic of
+        checkFacePyramids without recomputing.
+
+        Note: We intentionally do not perform any shape/size defensive checks: inputs
+        are assumed valid as per project policy (no defensive coding).
+        """
+        cdef vector[double] v_face_area_vecs
+        cdef vector[double] v_face_centres
+        cdef vector[double] v_cell_centres
+        cdef vector[double] v_cell_volumes
+        cdef vector[double] v_owner_pyr3
+        cdef vector[double] v_neighbour_pyr3
+
+        # Fill the vectors via underlying OFMesh routines
+        self._thisptr.getFaceAreaVectorsStd(v_face_area_vecs)
+        self._thisptr.getFaceCentresStd(v_face_centres)
+        self._thisptr.getCellCentresStd(v_cell_centres)
+        self._thisptr.getCellVolumesStd(v_cell_volumes)
+        self._thisptr.getOwnerPyr3Std(v_owner_pyr3)
+        self._thisptr.getNeighbourPyr3Std(v_neighbour_pyr3)
+
+        import numpy as np
+        def to_np_d(vec):
+            arr = np.empty(len(vec), dtype=float)
+            for i in range(len(vec)):
+                arr[i] = vec[i]
+            return arr
+
+        face_area_vectors = to_np_d(v_face_area_vecs).reshape((-1,3))
+        face_centres = to_np_d(v_face_centres).reshape((-1,3))
+        cell_centres = to_np_d(v_cell_centres).reshape((-1,3))
+        cell_volumes = to_np_d(v_cell_volumes)
+        owner_pyr3 = to_np_d(v_owner_pyr3)
+        neighbour_pyr3 = to_np_d(v_neighbour_pyr3)
+
+        return {
+            'face_area_vectors': face_area_vectors,
+            'face_centres': face_centres,
+            'cell_centres': cell_centres,
+            'cell_volumes': cell_volumes,
+            'owner_pyr3': owner_pyr3,
+            'neighbour_pyr3': neighbour_pyr3,
+        }
