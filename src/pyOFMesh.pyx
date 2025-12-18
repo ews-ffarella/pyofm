@@ -1,4 +1,3 @@
-
 # distutils: language = c++
 # distutils: sources = OFMesh.C
 
@@ -14,9 +13,9 @@
 
 '''
 
-cimport numpy as np
-
+from libcpp.vector cimport vector
 from libcpp.string cimport string
+cimport numpy as np
 
 # declear cpp functions
 cdef extern from "OFMesh.H" namespace "Foam":
@@ -43,6 +42,28 @@ cdef extern from "OFMesh.H" namespace "Foam":
         int getLocalFaceNeighbour(int)
         void readField(char* , char *, char *, double *)
         void writeField(char* , char *, double *)
+        double getFaceCentre(int,int)
+        double getFaceAreaVector(int,int)
+        double getFaceAreaMag(int)
+        double getCellCentre(int,int)
+        double getCellVolume(int)
+        void getFacePyramidVolumesStd(vector[double]& , vector[double]&)
+        void getCellDeterminantStd(vector[double]&)
+        bint getMinPyrVolumeStd(vector[double]&)
+        bint getMinTetVolumeStd(vector[double]&)
+        int getWrongOrientedFacesStd(vector[int]&)
+        void getCellInvertedMaskStd(vector[int]&)
+        void dumpDiagnostics(vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[double]&, vector[int]&, vector[int]&)
+        void getOwnersStd(vector[int]&)
+        void getNeighboursStd(vector[int]&)
+        void getFacePointsCsrStd(vector[int]&, vector[int]&)
+        void getCellFacesCsrStd(vector[int]&, vector[int]&)
+        void getFaceAreaVectorsStd(vector[double]&)
+        void getFaceCentresStd(vector[double]&)
+        void getCellCentresStd(vector[double]&)
+        void getCellVolumesStd(vector[double]&)
+        void getOwnerPyr3Std(vector[double]&)
+        void getNeighbourPyr3Std(vector[double]&)
 
 # create python wrappers that call cpp functions
 cdef class pyOFMesh:
@@ -159,3 +180,283 @@ cdef class pyOFMesh:
         
         cdef double *field_data = <double*>field.data
         self._thisptr.writeField(fieldName.encode(), fieldType.encode(), field_data)
+
+    # ------------------------------------------------------------------
+    # Geometry accessors (added for golden reference extraction)
+    # ------------------------------------------------------------------
+    def getFaceCentre(self, faceI, compI):
+        return self._thisptr.getFaceCentre(faceI, compI)
+
+    def getFaceAreaVector(self, faceI, compI):
+        return self._thisptr.getFaceAreaVector(faceI, compI)
+
+    def getFaceAreaMag(self, faceI):
+        return self._thisptr.getFaceAreaMag(faceI)
+
+    def getCellCentre(self, cellI, compI):
+        return self._thisptr.getCellCentre(cellI, compI)
+
+    def getCellVolume(self, cellI):
+        return self._thisptr.getCellVolume(cellI)
+
+    def getFacePyramidVolumes(self):
+        cdef vector[double] own
+        cdef vector[double] nei
+        self._thisptr.getFacePyramidVolumesStd(own, nei)
+        # Convert C++ vectors to numpy arrays (copies)
+        import numpy as np
+        a = np.empty(len(own), dtype=float)
+        for i in range(len(own)):
+            a[i] = own[i]
+        b = np.empty(len(nei), dtype=float)
+        for i in range(len(nei)):
+            b[i] = nei[i]
+        return a, b
+
+    def getCellDeterminant(self):
+        cdef vector[double] det
+        self._thisptr.getCellDeterminantStd(det)
+        import numpy as np
+        arr = np.empty(len(det), dtype=float)
+        for i in range(len(det)):
+            arr[i] = det[i]
+        return arr
+
+    def getMinPyrVolume(self):
+        cdef vector[double] v
+        ok = self._thisptr.getMinPyrVolumeStd(v)
+        if not ok:
+            return None
+        import numpy as np
+        arr = np.empty(len(v), dtype=float)
+        for i in range(len(v)):
+            arr[i] = v[i]
+        return arr
+
+    def getMinTetVolume(self):
+        cdef vector[double] v
+        ok = self._thisptr.getMinTetVolumeStd(v)
+        if not ok:
+            return None
+        import numpy as np
+        arr = np.empty(len(v), dtype=float)
+        for i in range(len(v)):
+            arr[i] = v[i]
+        return arr
+
+    def getWrongOrientedFaces(self):
+        cdef vector[int] f
+        count = self._thisptr.getWrongOrientedFacesStd(f)
+        import numpy as np
+        arr = np.empty(len(f), dtype=np.int32)
+        for i in range(len(f)):
+            arr[i] = f[i]
+        return arr
+
+    def getCellInvertedMask(self):
+        cdef vector[int] m
+        self._thisptr.getCellInvertedMaskStd(m)
+        import numpy as np
+        arr = np.empty(len(m), dtype=np.int32)
+        for i in range(len(m)):
+            arr[i] = m[i]
+        return arr
+
+    def dumpDiagnostics(self):
+        cdef vector[double] own
+        cdef vector[double] nei
+        cdef vector[double] minP
+        cdef vector[double] minT
+        cdef vector[double] det
+        cdef vector[int] wrong
+        cdef vector[int] inv
+        self._thisptr.dumpDiagnostics(own, nei, minP, minT, det, wrong, inv)
+        import numpy as np
+        def to_np_d(v):
+            a = np.empty(len(v), dtype=float)
+            for i in range(len(v)):
+                a[i] = v[i]
+            return a
+        def to_np_i(v):
+            a = np.empty(len(v), dtype=np.int32)
+            for i in range(len(v)):
+                a[i] = v[i]
+            return a
+        return {
+            'face_owner_pyr3': to_np_d(own),
+            'face_nei_pyr3': to_np_d(nei),
+            'cell_minPyrVolume': None if len(minP)==0 else to_np_d(minP),
+            'cell_minTetVolume': None if len(minT)==0 else to_np_d(minT),
+            'cell_determinant': to_np_d(det),
+            'wrong_oriented_faces': to_np_i(wrong),
+            'cell_inverted_mask': to_np_i(inv),
+        }
+
+    # ------------------------------------------------------------------
+    # Bulk connectivity exports (return NumPy arrays)
+    # ------------------------------------------------------------------
+    def getOwners(self):
+        cdef vector[int] vec
+        self._thisptr.getOwnersStd(vec)
+        import numpy as np
+        arr = np.empty(len(vec), dtype=np.int32)
+        for i in range(len(vec)):
+            arr[i] = vec[i]
+        return arr
+
+    def getNeighbours(self):
+        cdef vector[int] vec
+        self._thisptr.getNeighboursStd(vec)
+        import numpy as np
+        arr = np.empty(len(vec), dtype=np.int32)
+        for i in range(len(vec)):
+            arr[i] = vec[i]
+        return arr
+
+    def getFacePointsCSR(self):
+        cdef vector[int] offs
+        cdef vector[int] pts
+        self._thisptr.getFacePointsCsrStd(offs, pts)
+        import numpy as np
+        offArr = np.empty(len(offs), dtype=np.int32)
+        for i in range(len(offs)):
+            offArr[i] = offs[i]
+        ptsArr = np.empty(len(pts), dtype=np.int32)
+        for i in range(len(pts)):
+            ptsArr[i] = pts[i]
+        return offArr, ptsArr
+
+    def getCellFacesCSR(self):
+        cdef vector[int] offs
+        cdef vector[int] fcs
+        self._thisptr.getCellFacesCsrStd(offs, fcs)
+        import numpy as np
+        offArr = np.empty(len(offs), dtype=np.int32)
+        for i in range(len(offs)):
+            offArr[i] = offs[i]
+        fArr = np.empty(len(fcs), dtype=np.int32)
+        for i in range(len(fcs)):
+            fArr[i] = fcs[i]
+        return offArr, fArr
+
+    # ------------------------------------------------------------------
+    # Bulk geometry arrays
+    # ------------------------------------------------------------------
+    def getFaceAreaVectors(self):
+        cdef vector[double] dat
+        self._thisptr.getFaceAreaVectorsStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getFaceCentres(self):
+        cdef vector[double] dat
+        self._thisptr.getFaceCentresStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getCellCentres(self):
+        cdef vector[double] dat
+        self._thisptr.getCellCentresStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr.reshape((-1,3))
+
+    def getCellVolumes(self):
+        cdef vector[double] dat
+        self._thisptr.getCellVolumesStd(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
+
+    def getOwnerPyr3(self):
+        cdef vector[double] dat
+        self._thisptr.getOwnerPyr3Std(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
+
+    def getNeighbourPyr3(self):
+        cdef vector[double] dat
+        self._thisptr.getNeighbourPyr3Std(dat)
+        import numpy as np
+        arr = np.empty(len(dat), dtype=float)
+        for i in range(len(dat)):
+            arr[i] = dat[i]
+        return arr
+
+    # ------------------------------------------------------------------
+    # Bulk snapshot (geometry + pyramid volumes)
+    # ------------------------------------------------------------------
+    def getGeometrySnapshot(self):
+        """Return a consistent snapshot of core geometric arrays and face pyramid volumes.
+
+        This aggregates several separate C++ std::vector export routines into one
+        Python call to reduce overhead and ensure we obtain a self‑consistent
+        (same-timestep) view of the mesh geometry for parity/gold generation.
+
+        Returned dictionary keys:
+          - face_area_vectors: (nFaces,3) area vectors (OpenFOAM: primitiveMeshGeometry.C)
+          - face_centres:      (nFaces,3) face centres     (primitiveMeshGeometry.C)
+          - cell_centres:      (nCells,3) cell centres     (polyMeshGeometry.C)
+          - cell_volumes:      (nCells,)  cell volumes     (polyMeshGeometry.C)
+          - owner_pyr3:        (nInternalFaces,) signed owner pyramid volumes
+          - neighbour_pyr3:    (nInternalFaces,) signed neighbour pyramid volumes
+
+        Pyramid volumes correspond to the face-based signed pyramid volumes used by
+        OpenFOAM checkMesh (see primitiveMeshTools.C::facePyramidVolume and
+        primitiveMeshGeometry.C::checkFacePyramids). We expose them directly so that
+        higher-level parity tests in py-ofmesh can reimplement the exact logic of
+        checkFacePyramids without recomputing.
+
+        Note: We intentionally do not perform any shape/size defensive checks: inputs
+        are assumed valid as per project policy (no defensive coding).
+        """
+        cdef vector[double] v_face_area_vecs
+        cdef vector[double] v_face_centres
+        cdef vector[double] v_cell_centres
+        cdef vector[double] v_cell_volumes
+        cdef vector[double] v_owner_pyr3
+        cdef vector[double] v_neighbour_pyr3
+
+        # Fill the vectors via underlying OFMesh routines
+        self._thisptr.getFaceAreaVectorsStd(v_face_area_vecs)
+        self._thisptr.getFaceCentresStd(v_face_centres)
+        self._thisptr.getCellCentresStd(v_cell_centres)
+        self._thisptr.getCellVolumesStd(v_cell_volumes)
+        self._thisptr.getOwnerPyr3Std(v_owner_pyr3)
+        self._thisptr.getNeighbourPyr3Std(v_neighbour_pyr3)
+
+        import numpy as np
+        def to_np_d(vec):
+            arr = np.empty(len(vec), dtype=float)
+            for i in range(len(vec)):
+                arr[i] = vec[i]
+            return arr
+
+        face_area_vectors = to_np_d(v_face_area_vecs).reshape((-1,3))
+        face_centres = to_np_d(v_face_centres).reshape((-1,3))
+        cell_centres = to_np_d(v_cell_centres).reshape((-1,3))
+        cell_volumes = to_np_d(v_cell_volumes)
+        owner_pyr3 = to_np_d(v_owner_pyr3)
+        neighbour_pyr3 = to_np_d(v_neighbour_pyr3)
+
+        return {
+            'face_area_vectors': face_area_vectors,
+            'face_centres': face_centres,
+            'cell_centres': cell_centres,
+            'cell_volumes': cell_volumes,
+            'owner_pyr3': owner_pyr3,
+            'neighbour_pyr3': neighbour_pyr3,
+        }
